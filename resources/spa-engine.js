@@ -139,4 +139,23 @@
     });
 
     window.spaNavigate = navigateTo;
+
+    // Mouseover Prefetch
+    var prefetchTimer = null;
+    document.addEventListener('mouseover', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!shouldHandleClick({ defaultPrevented: false, button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }, link)) return;
+        clearTimeout(prefetchTimer);
+        prefetchTimer = setTimeout(function () {
+            fetch(link.href, {
+                method: 'GET',
+                headers: { 'X-Frontend-SPA': 'true', 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+        }, 100);
+    });
+
+    document.addEventListener('mouseout', function (e) {
+        clearTimeout(prefetchTimer);
+    });
 })();
