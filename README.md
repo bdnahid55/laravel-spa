@@ -25,7 +25,7 @@ First load is always a normal full page request, so SEO and auth work exactly as
 ## Installation
 
 ```bash
-composer require sakib/laravel-spa
+composer require saakiiib/laravel-spa
 ```
 
 Publish the JS file:
