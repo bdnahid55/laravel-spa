@@ -1,10 +1,7 @@
 <?php
 
-namespace Sakib\LaravelSpa;
-
-trait RendersSpaView
-{
-    protected function renderSpa(string $view, array $data = [])
+if (!function_exists('spa')) {
+    function spa(string $view, array $data = [])
     {
         $viewResponse = view($view, $data);
 
@@ -14,13 +11,15 @@ trait RendersSpaView
             if (empty(trim($sections['content'] ?? ''))) {
                 $fullHtml = $viewResponse->render();
 
-                // safe content extraction without nested main issue
                 $content = '';
                 $start = strpos($fullHtml, 'data-spa-content');
                 if ($start !== false) {
-                    $tagStart = strrpos(substr($fullHtml, 0, $start), '<');
+                    $openTag = strrpos(substr($fullHtml, 0, $start), '<');
+                    $tagNameMatch = [];
+                    preg_match('/<(\w+)\s[^>]*data-spa-content/', substr($fullHtml, $openTag), $tagNameMatch);
+                    $tagName = $tagNameMatch[1] ?? 'div';
                     $innerStart = strpos($fullHtml, '>', $start) + 1;
-                    $innerEnd = strrpos($fullHtml, '</main>');
+                    $innerEnd = strrpos($fullHtml, '</' . $tagName . '>');
                     if ($innerStart && $innerEnd) {
                         $content = trim(substr($fullHtml, $innerStart, $innerEnd - $innerStart));
                     }
@@ -33,8 +32,7 @@ trait RendersSpaView
                 $script = implode("\n", $scriptMatches[0] ?? []);
 
                 preg_match('/<title>(.*?)<\/title>/si', $fullHtml, $titleMatch);
-                $rawTitle = strip_tags($titleMatch[1] ?? config('app.name'));
-                $title = trim(explode(' - ', $rawTitle)[0]);
+                $title = strip_tags($titleMatch[1] ?? config('app.name'));
 
                 return response()->json([
                     'title'   => $title,
@@ -46,9 +44,7 @@ trait RendersSpaView
 
             $style  = preg_replace('/<style(?![^>]*data-spa-style)/', '<style data-spa-style', $sections['style'] ?? '');
             $script = preg_replace('/<script(?![^>]*data-spa-page-script)/', '<script data-spa-page-script', $sections['script'] ?? '');
-
-            $rawTitle = strip_tags($sections['title'] ?? config('app.name'));
-            $title    = trim(explode(' - ', $rawTitle)[0]);
+            $title  = strip_tags($sections['title'] ?? config('app.name'));
 
             return response()->json([
                 'title'   => $title,

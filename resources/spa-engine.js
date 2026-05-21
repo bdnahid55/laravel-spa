@@ -6,11 +6,6 @@
 
     var requestController = null;
     var navigating = false;
-    var appNameSuffix = document.title.includes(' - ') ? ' - ' + document.title.split(' - ').slice(1).join(' - ') : '';
-
-    function setLoading(state) {
-        document.body.setAttribute('data-spa-loading', state ? 'true' : 'false');
-    }
 
     function normalizePath(pathname) {
         if (!pathname) return '/';
@@ -20,7 +15,7 @@
 
     function updateActiveNav() {
         var currentPath = normalizePath(window.location.pathname);
-        document.querySelectorAll('[data-spa-link]').forEach(function (link) {
+        document.querySelectorAll('a[data-spa]').forEach(function (link) {
             var linkPath = normalizePath(new URL(link.href, window.location.origin).pathname);
             link.classList.toggle('active', linkPath === currentPath);
         });
@@ -68,7 +63,7 @@
     function shouldHandleClick(event, link) {
         if (!link) return false;
         if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
-        if (link.getAttribute('data-spa') === 'off') return false;
+        if (!link.hasAttribute('data-spa')) return false;
         if (link.hasAttribute('download') || (link.getAttribute('target') && link.getAttribute('target') !== '_self')) return false;
         var href = link.getAttribute('href');
         if (!href || href === '#' || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0 || href.indexOf('javascript:') === 0) return false;
@@ -83,7 +78,6 @@
         var shouldScroll = options.scroll !== false;
         if (navigating) return;
         navigating = true;
-        setLoading(true);
         if (requestController) requestController.abort();
         requestController = new AbortController();
         try {
@@ -111,7 +105,7 @@
             contentEl.innerHTML = payload.content;
             applyScripts(payload.script || '');
             if (payload.title && payload.title.trim()) {
-                document.title = payload.title + (appNameSuffix ? appNameSuffix : '');
+                document.title = payload.title;
             }
             if (shouldPush) history.pushState({ url: url }, '', url);
             if (shouldScroll) window.scrollTo({ top: 0, behavior: 'auto' });
@@ -120,7 +114,6 @@
             if (error.name !== 'AbortError') window.location.href = url;
         } finally {
             navigating = false;
-            setLoading(false);
         }
     }
 
@@ -142,20 +135,30 @@
 
     // Mouseover Prefetch
     var prefetchTimer = null;
+    var prefetchController = null;
+    var prefetched = new Set();
+
     document.addEventListener('mouseover', function (e) {
         var link = e.target.closest('a[href]');
         if (!shouldHandleClick({ defaultPrevented: false, button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }, link)) return;
+        if (prefetched.has(link.href)) return;
         clearTimeout(prefetchTimer);
+        if (prefetchController) prefetchController.abort();
         prefetchTimer = setTimeout(function () {
+            prefetchController = new AbortController();
             fetch(link.href, {
                 method: 'GET',
                 headers: { 'X-Frontend-SPA': 'true', 'Accept': 'application/json' },
-                credentials: 'same-origin'
-            });
+                credentials: 'same-origin',
+                signal: prefetchController.signal
+            }).then(function () {
+                prefetched.add(link.href);
+            }).catch(function () {});
         }, 100);
     });
 
     document.addEventListener('mouseout', function (e) {
         clearTimeout(prefetchTimer);
+        if (prefetchController) prefetchController.abort();
     });
 })();

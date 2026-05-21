@@ -1,131 +1,109 @@
-# Laravel SPA
+# Laravel SPA — by [Sakib](https://github.com/saakiiib)
 
-> SPA-speed navigation for Laravel Blade — no jQuery, no Livewire, no Inertia, no build step.
+By default, every link click in Laravel loads a full new page — HTML, CSS, JS, fonts, everything re-downloads. SPA (Single Page Application) navigation skips that. Only the content changes, the rest of the page stays. Faster, smoother, no white flash between pages.
 
-Works with Laravel 10, 11, and 12. Supports both `@extends` and `x-layout` component patterns.
+Most Laravel SPA solutions force you to either abandon Blade entirely (Inertia) or add jQuery (pjax). This package adds that same speed on top of your existing Blade views — no rewrite, nothing changes except how fast it feels.
 
 ---
 
-## Install
+## Quick Start
 
 ```bash
 composer require saakiiib/laravel-spa
 php artisan vendor:publish --tag=spa-assets
 ```
 
-Add to your layout before `</body>`:
-
-```html
-<script src="{{ asset('vendor/laravel-spa/spa-engine.js') }}"></script>
-```
+Then see [Full Setup Guide](#full-setup-guide) below.
 
 ---
 
-## Usage
+## Full Setup Guide
 
-**1. Add the trait to your controller**
+### 1. Layout file
+
+Add `@spaContent` to your content wrapper and `@spaEngine` before `</body>`.
+
+Works with both `@extends` and `x-layout`:
+
+```blade
+{{-- @extends style --}}
+<div @spaContent>
+    @yield('content')
+</div>
+@spaEngine
+```
+
+```blade
+{{-- x-layout style --}}
+<div @spaContent>
+    {{ $slot }}
+</div>
+@spaEngine
+```
+
+### 2. Navigation links
+
+Add `@spa` to any anchor you want SPA navigation on. Links without `@spa` work normally.
+
+```blade
+<a href="/" @spa>Home</a>
+<a href="/about" @spa>About</a>
+<a href="/logout">Logout</a>  {{-- normal full reload --}}
+```
+
+### 3. Controller
+
+No trait, no import, no setup — just return `spa()`:
 
 ```php
-use Sakib\LaravelSpa\RendersSpaView;
-
-class PageController extends Controller
+public function index()
 {
-    use RendersSpaView;
+    return spa('pages.home');
+}
 
-    public function home()
-    {
-        return $this->renderSpa('frontend.home', compact('products'));
-    }
+public function about()
+{
+    return spa('pages.about', compact('data'));
 }
 ```
 
-**2. Mark your content area**
+### 4. Page views
 
-```html
-<main data-spa-content>
-    @yield('content')
-</main>
+No changes needed. Your existing Blade views work as-is:
+
+```blade
+{{-- @extends style --}}
+@extends('layouts.app')
+@section('content')
+    <h1>Hello</h1>
+@endsection
 ```
 
-That's it. Your Blade views don't change at all.
-
----
-
-## What you get
-
-- ⚡ No full page reloads on navigation
-- 🔗 URL changes, back/forward button works
-- 📄 Direct URLs, refresh, and sharing all work normally
-- 🎨 Per-page styles load and unload automatically
-- 📜 Per-page scripts load and unload automatically
-- 🔒 Session expiry handled — redirects cleanly instead of breaking
-- 🚫 Zero JS dependencies
-
----
-
-## Opt out a link
-
-```html
-<a href="/logout" data-spa="off">Logout</a>
-```
-
-## Active nav
-
-```html
-<a href="{{ route('home') }}" data-spa-link="true">Home</a>
-```
-
-Adds `active` class automatically on current page.
-
-## Loading state
-
-```css
-[data-spa-loading='true'] #your-content {
-    opacity: 0.5;
-}
-```
-
-`data-spa-loading` is toggled on `<body>` during every navigation.
-
-## Programmatic navigation
-
-```js
-window.spaNavigate('/page');
+```blade
+{{-- x-layout style --}}
+<x-layout>
+    <h1>Hello</h1>
+</x-layout>
 ```
 
 ---
 
-## x-layout support
+## What works out of the box
 
-Mark your layout's own styles and scripts so the package knows what's global vs page-specific:
-
-```html
-<style data-spa-layout-style> /* global styles */ </style>
-<script data-spa-layout-script> /* global scripts */ </script>
-```
-
-Page views stay completely clean — no attributes needed.
-
----
-
-## vs existing packages
-
-| | spatie/laravel-pjax | jacobbennett/pjax | **saakiiib/laravel-spa** |
-|---|:---:|:---:|:---:|
-| jQuery required | ✅ | ✅ | ❌ |
-| Middleware based | ✅ | ✅ | ❌ |
-| x-layout support | ❌ | ❌ | ✅ |
-| Script lifecycle | ❌ | ❌ | ✅ |
-| Session handling | ❌ | ❌ | ✅ |
-| Zero dependencies | ❌ | ❌ | ✅ |
+- URL updates, back/forward button, refresh, direct links — all work
+- Per-page `<style>` and `<script>` load and unload on every navigation
+- Session expiry redirects cleanly instead of breaking
+- Works with both `@extends` and `x-layout` — no difference in setup
 
 ---
 
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10 / 11 / 12
+- Laravel 10, 11, or 12
+
+---
 
 ## License
 
-MIT — made by [Sakib](https://github.com/saakiiib)
+MIT — [Sakib](https://github.com/saakiiib)
