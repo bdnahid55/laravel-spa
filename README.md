@@ -12,6 +12,7 @@ Most Laravel SPA solutions force you to either abandon Blade entirely (Inertia) 
 composer require saakiiib/laravel-spa
 php artisan vendor:publish --tag=spa-assets
 ```
+> Add `/public/vendor` to your `.gitignore` to avoid committing published assets.
 
 Then see [Full Setup Guide](#full-setup-guide) below.
 
@@ -101,6 +102,12 @@ No changes needed. Your existing Blade views work as-is:
 
 - PHP 8.1+
 - Laravel 10, 11, or 12
+
+---
+
+## Contributing
+
+Found a bug or want to improve something? PRs are welcome on [GitHub](https://github.com/saakiiib/laravel-spa).
 
 ---
 

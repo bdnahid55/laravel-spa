@@ -6,6 +6,8 @@
 
     var requestController = null;
     var navigating = false;
+    var prefetchTimer = null;
+    var prefetchPromises = {};
 
     function normalizePath(pathname) {
         if (!pathname) return '/';
@@ -81,32 +83,30 @@
         if (requestController) requestController.abort();
         requestController = new AbortController();
         try {
-            var response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-Frontend-SPA': 'true',
-                    'Accept': 'application/json'
-                },
-                signal: requestController.signal,
-                credentials: 'same-origin'
-            });
-            var contentType = response.headers.get('content-type') || '';
-            if (!response.ok || contentType.indexOf('application/json') === -1) {
-                window.location.href = url; return;
+            var payload = null;
+            if (prefetchPromises[url]) {
+                payload = await prefetchPromises[url];
+                delete prefetchPromises[url];
             }
-            var payload = await response.json();
-            if (payload.redirect) {
-                window.location.href = payload.redirect; return;
+            if (!payload) {
+                var response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'X-Frontend-SPA': 'true', 'Accept': 'application/json' },
+                    signal: requestController.signal,
+                    credentials: 'same-origin'
+                });
+                var contentType = response.headers.get('content-type') || '';
+                if (!response.ok || contentType.indexOf('application/json') === -1) {
+                    window.location.href = url; return;
+                }
+                payload = await response.json();
             }
-            if (!payload || !payload.content || !payload.content.trim()) {
-                window.location.href = url; return;
-            }
+            if (payload.redirect) { window.location.href = payload.redirect; return; }
+            if (!payload.content || !payload.content.trim()) { window.location.href = url; return; }
             applyStyles(payload.style || '');
             contentEl.innerHTML = payload.content;
             applyScripts(payload.script || '');
-            if (payload.title && payload.title.trim()) {
-                document.title = payload.title;
-            }
+            if (payload.title && payload.title.trim()) document.title = payload.title;
             if (shouldPush) history.pushState({ url: url }, '', url);
             if (shouldScroll) window.scrollTo({ top: 0, behavior: 'auto' });
             updateActiveNav();
@@ -133,32 +133,28 @@
 
     window.spaNavigate = navigateTo;
 
-    // Mouseover Prefetch
-    var prefetchTimer = null;
-    var prefetchController = null;
-    var prefetched = new Set();
-
     document.addEventListener('mouseover', function (e) {
         var link = e.target.closest('a[href]');
         if (!shouldHandleClick({ defaultPrevented: false, button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }, link)) return;
-        if (prefetched.has(link.href)) return;
+        if (prefetchPromises[link.href]) return;
         clearTimeout(prefetchTimer);
-        if (prefetchController) prefetchController.abort();
         prefetchTimer = setTimeout(function () {
-            prefetchController = new AbortController();
-            fetch(link.href, {
+            prefetchPromises[link.href] = fetch(link.href, {
                 method: 'GET',
                 headers: { 'X-Frontend-SPA': 'true', 'Accept': 'application/json' },
-                credentials: 'same-origin',
-                signal: prefetchController.signal
-            }).then(function () {
-                prefetched.add(link.href);
-            }).catch(function () {});
+                credentials: 'same-origin'
+            }).then(function (res) {
+                if (!res.ok) throw new Error('bad response');
+                return res.json();
+            }).catch(function () {
+                delete prefetchPromises[link.href];
+                return null;
+            });
         }, 100);
     });
 
     document.addEventListener('mouseout', function (e) {
         clearTimeout(prefetchTimer);
-        if (prefetchController) prefetchController.abort();
     });
+
 })();
