@@ -1,6 +1,6 @@
 # Laravel SPA — by [Sakib](https://github.com/saakiiib)
 
-By default, every link click in Laravel loads a full new page — HTML, CSS, JS, fonts, everything re-downloads. SPA (Single Page Application) navigation skips that. Only the content changes, the rest of the page stays. Faster, smoother, no white flash between pages.
+By default, every link click in Laravel loads a full new page — HTML, CSS, JS, fonts, everything re-downloads. SPA navigation skips that. Only the content changes, the rest stays. Faster, smoother, no white flash between pages.
 
 Most Laravel SPA solutions force you to either abandon Blade entirely (Inertia) or add jQuery (pjax). This package adds that same speed on top of your existing Blade views — no rewrite, nothing changes except how fast it feels.
 
@@ -12,52 +12,40 @@ Most Laravel SPA solutions force you to either abandon Blade entirely (Inertia) 
 composer require saakiiib/laravel-spa
 php artisan vendor:publish --tag=spa-assets
 ```
-> Add `/public/vendor` to your `.gitignore` to avoid committing published assets.
 
-Then see [Full Setup Guide](#full-setup-guide) below.
+> Add `/public/vendor` to your `.gitignore` to avoid committing published assets.
 
 ---
 
-## Full Setup Guide
+## Setup — `@extends` / `@section`
 
-### 1. Layout file
+**1. Layout file**
 
-Add `@spaContent` to your content wrapper and `@spaEngine` before `</body>`.
-
-Works with both `@extends` and `x-layout`:
+Add `@spaContent` to your content wrapper and `@spaEngine` before `</body>`. Make sure `@yield('script')` comes after `@spaEngine`.
 
 ```blade
-{{-- @extends style --}}
-<div @spaContent>
+<main @spaContent>
     @yield('content')
-</div>
+</main>
+
 @spaEngine
+@yield('script')
 ```
+
+**2. Navigation links**
+
+Add `@spa` to links you want SPA navigation on. Links without `@spa` do a normal full reload.
 
 ```blade
-{{-- x-layout style --}}
-<div @spaContent>
-    {{ $slot }}
-</div>
-@spaEngine
+<a href="{{ route('home') }}" @spa>Home</a>
+<a href="{{ route('about') }}" @spa>About</a>
+<a href="{{ route('logout') }}">Logout</a>
 ```
 
-### 2. Navigation links
-
-Add `@spa` to any anchor you want SPA navigation on. Links without `@spa` work normally.
-
-```blade
-<a href="/" @spa>Home</a>
-<a href="/about" @spa>About</a>
-<a href="/logout">Logout</a>  {{-- normal full reload --}}
-```
-
-### 3. Controller
-
-No trait, no import, no setup — just return `spa()`:
+**3. Controller**
 
 ```php
-public function index()
+public function home()
 {
     return spa('pages.home');
 }
@@ -68,23 +56,100 @@ public function about()
 }
 ```
 
-### 4. Page views
-
-No changes needed. Your existing Blade views work as-is:
+**4. Page views — no changes needed**
 
 ```blade
-{{-- @extends style --}}
 @extends('layouts.app')
+
+@section('title', 'Home')
+
+@section('style')
+    <style>
+        .hero { background: #1a3c6e; color: #fff; padding: 60px; }
+    </style>
+@endsection
+
 @section('content')
-    <h1>Hello</h1>
+    <div class="hero">
+        <h1>Welcome</h1>
+    </div>
+@endsection
+
+@section('script')
+    <script>
+        console.log('page loaded');
+    </script>
 @endsection
 ```
 
+---
+
+## Setup — `x-layout` components
+
+**1. Layout component**
+
+Add `data-spa-layout-style` to your global `<style>` blocks and `data-spa-layout-script` to your global `<script>` blocks — this tells the package what belongs to the layout vs the page. Add `@spaContent` to your content wrapper and `@spaEngine` before `</body>`.
+
 ```blade
-{{-- x-layout style --}}
-<x-layout>
-    <h1>Hello</h1>
-</x-layout>
+<head>
+    <style data-spa-layout-style>
+        /* global styles */
+    </style>
+
+    {{ $style ?? '' }}
+</head>
+<body>
+    <main @spaContent>
+        {{ $slot }}
+    </main>
+
+    <script data-spa-layout-script>
+        /* global scripts — jquery helpers, ajax setup etc */
+    </script>
+
+    @spaEngine
+    {{ $script ?? '' }}
+</body>
+```
+
+**2. Navigation links** — same as above, add `@spa`:
+
+```blade
+<a href="{{ route('home') }}" @spa>Home</a>
+<a href="{{ route('logout') }}">Logout</a>
+```
+
+**3. Controller** — same as above:
+
+```php
+public function home()
+{
+    return spa('pages.home');
+}
+```
+
+**4. Page views**
+
+```blade
+<x-app-layout title="Home">
+
+    <x-slot:style>
+        <style>
+            .hero { background: #1a3c6e; color: #fff; padding: 60px; }
+        </style>
+    </x-slot:style>
+
+    <div class="hero">
+        <h1>Welcome</h1>
+    </div>
+
+    <x-slot:script>
+        <script>
+            console.log('page loaded');
+        </script>
+    </x-slot:script>
+
+</x-app-layout>
 ```
 
 ---
@@ -92,9 +157,10 @@ No changes needed. Your existing Blade views work as-is:
 ## What works out of the box
 
 - URL updates, back/forward button, refresh, direct links — all work
-- Per-page `<style>` and `<script>` load and unload on every navigation
+- Per-page styles and scripts load and unload on every navigation
 - Session expiry redirects cleanly instead of breaking
-- Works with both `@extends` and `x-layout` — no difference in setup
+- Hover prefetch — pages start loading before you even click
+- Works with both `@extends` and `x-layout`
 
 ---
 
