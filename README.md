@@ -15,6 +15,12 @@ php artisan vendor:publish --tag=spa-assets
 
 > Add `/public/vendor` to your `.gitignore` to avoid committing published assets.
 
+> **Updating?** When you run `composer update`, the published `spa-engine.js` in `public/vendor/` does **not** auto-update — Composer only updates the package source, not previously published assets. Re-publish with the `--force` flag to pull the latest fix/version in:
+> ```bash
+> php artisan vendor:publish --tag=spa-assets --force
+> ```
+> Skipping this means you'll keep running an old `spa-engine.js` even after upgrading the package version.
+
 ---
 
 ## Setup — `@extends` / `@section`
